@@ -1,0 +1,20 @@
+{
+  "name": "cypher-panel",
+  "version": "1.0.0",
+  "description": "لوحة تحكم Cypher Security — تشتغل مستقلة أو داخل البوت",
+  "main": "standalone.js",
+  "scripts": {
+    "start": "node standalone.js",
+    "check": "node --check standalone.js && node --check server.js",
+    "sync": "node ../tools/sync-panel-lib.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.0.0"
+  }
+}
