@@ -19,10 +19,24 @@
 
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
 
-const ctx = require('./lib/bot-context.js');
+// الوضع المنشور على GitHub أحياناً يرفع الملفات مسطّحة (بدون مجلد lib/)
+// فنبحث في المكانين حتى يعملstandalone.js على أي تخطيط.
+const BOT_CONTEXT = [
+    path.join(__dirname, 'lib', 'bot-context.js'),
+    path.join(__dirname, 'bot-context.js')
+].find(p => fs.existsSync(p));
+
+if (!BOT_CONTEXT) {
+    console.error('[panel] ❌ ما لقيت lib/bot-context.js ولا bot-context.js في جذر المشروع');
+    process.exit(1);
+}
+
+const ctx = require(BOT_CONTEXT);
 const setupDashboard = require('./server.js');
 
 const PORT = Number(process.env.PORT) || 10000;
@@ -90,7 +104,8 @@ async function startClient() {
         console.error('  ' + (err?.message || err));
         if (/token.*invalid|TokenInvalid/i.test(String(err?.message || ''))) {
             console.error('\n  غالباً التوكن غلط أو فيه مسافات/اقتباسات.');
-            console.error('  جرّب: node -e "console.log(require(\'./lib/bot-context.js\').botToken().length)"');
+            const rel = path.relative(__dirname, BOT_CONTEXT).replace(/\\/g, '/');
+            console.error(`  جرّب: node -e "console.log(require('./${rel}').botToken().length)"`);
         }
         if (/already.*(online|authenticated)|session.*duplicate/i.test(String(err?.message || ''))) {
             console.error('\n  ⚠️  هذا التوكن متصل من مكان ثاني.');
