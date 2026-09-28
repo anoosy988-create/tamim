@@ -1,7 +1,20 @@
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
 const https = require('https');
 const path = require('path');
+
+// الوضع المنشور على GitHub أحياناً يرفع الملفات مسطّحة (بدون مجلدات lib/ و public/)
+// فنبحث في المكانين حتى يعمل الداشبورد بأي تخطيط.
+function resolvePanelPath(...candidates) {
+    for (const rel of candidates) {
+        const full = path.join(__dirname, rel);
+        if (fs.existsSync(full)) return full;
+    }
+    return path.join(__dirname, candidates[0]);
+}
+
+const BOT_CONTEXT_PATH = resolvePanelPath('lib', 'bot-context.js');
 
 const SESSION_TTL = 7 * 24 * 60 * 60 * 1000;   // أسبوع
 const OAUTH_STATE_TTL = 10 * 60 * 1000;   // 10 دقائق
@@ -444,7 +457,7 @@ module.exports = function setupDashboard(app, deps = {}) {
     const injected = deps || {};
     const standalone = !injected.client;
 
-    const ctxLib = standalone ? require('./lib/bot-context.js') : null;
+    const ctxLib = standalone ? require(BOT_CONTEXT_PATH) : null;
     const resolved = standalone
         ? ctxLib.buildDeps({ client: injected.client, tickets: injected.tickets })
         : injected;
@@ -509,7 +522,7 @@ module.exports = function setupDashboard(app, deps = {}) {
 
     app.set('trust proxy', 1);
 
-    const publicDir = path.join(__dirname, 'public');
+    const publicDir = resolvePanelPath('public', 'index.html');
     let botAvatarCache = null;
 
     // ======================================================
