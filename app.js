@@ -2175,11 +2175,14 @@ async function removeAR(i) {
 /* ---------- SHORTCUTS (مجموعة حسب الأمر) ---------- */
 
 const SHORTCUT_COMMANDS = [
-    { key: 'ban', label: '🔨 حظر (Ban)', hint: 'اختصار كلمة أو كلمتين أو ثلاث كلمات + المنشن — يبند البوت العضو فوراً.' },
-    { key: 'kick', label: '👢 طرد (Kick)', hint: 'اختصار للطرد مع المنشن.' },
-    { key: 'timeout', label: '⏱️ تايم أوت', hint: 'مثال: يسكت مع المنشن والمدة (مثال: 10m).' },
-    { key: 'jail', label: '🔒 سجن', hint: 'سجن فوري مع المنشن.' },
-    { key: 'unjail', label: '🔓 فك السجن', hint: 'فك السجن مع المنشن.' },
+    { key: 'ban', label: '🔨 حظر (Ban)', hint: 'اختصار كلمة أو كلمتين أو ثلاث كلمات + المنشن — يبند البوت العضو فوراً. العضو ينكتب منشن أو يوزرنيم أو آيدي.' },
+    { key: 'kick', label: '👢 طرد (Kick)', hint: 'اختصار للطرد — العضو منشن أو يوزرنيم أو آيدي.' },
+    { key: 'timeout', label: '⏱️ تايم أوت', hint: 'مثال: يسكت @عضو 10m — أو يسكت ahmed 10m (العضو بالاسم والرتبة اختيارية).' },
+    { key: 'jail', label: '🔒 سجن', hint: 'سجن فوري — العضو منشن أو يوزرنيم أو آيدي.' },
+    { key: 'unjail', label: '🔓 فك السجن', hint: 'فك السجن — العضو منشن أو يوزرنيم أو آيدي.' },
+    { key: 'untimeout', label: '🔓 فك التايم أوت', hint: 'يرفع التايم أوت عن العضو — منشن أو يوزرنيم أو آيدي.' },
+    { key: 'role-add', label: '🎭 إعطاء رتبة', hint: 'مثال: ر @عضو @رتبة — أو ر ahmed مشرف (اسم الرتبة جزئي كافي) — أو ر @عضو 123456789012345678 (آيدي الرتبة).' },
+    { key: 'role-remove', label: '🎭 سحب رتبة', hint: 'نفس حق إعطاء الرتبة: منشن أو اسم الرتبة أو آيديها.' },
     { key: 'unban', label: '🔓 فك الحظر', hint: 'فك الحظر بآيدي العضو.' },
     { key: 'purge', label: '🗑️ مسح الرسائل', hint: 'يمسح رسائل الشات بالعدد.' },
     { key: 'lock', label: '🔒 قفل روم', hint: 'يقفل الروم المؤلَّف.' },
@@ -2190,6 +2193,45 @@ function shortcutsFor(command) {
     return (GUILD.settings.shortcuts || [])
         .map((s, i) => ({ ...s, i }))
         .filter(s => s.command === command);
+}
+
+// ⭐ شبكة أمان: أي اختصار سويته من أمر سلاش ما كان موجود بـ SHORTCUT_COMMANDS
+// (مثلاً أمر جديد نضيفه للسلاش لاحقاً) يظهر هنا بدال ما يختفي من الموقع.
+function orphanShortcutGroups() {
+    const known = new Set(SHORTCUT_COMMANDS.map(c => c.key));
+
+    const orphans = [...new Set(
+        (GUILD.settings.shortcuts || [])
+            .map(s => s?.command)
+            .filter(c => c && !known.has(c))
+    )];
+
+    if (!orphans.length) return '';
+
+    return orphans.map(key => {
+        const list = shortcutsFor(key);
+        const open = openScGroup === key;
+        return `
+            <div class="panel-card sc-group">
+                <button type="button" class="sc-group-head" data-action="toggle-shortcut-group" data-command="${escapeHtml(key)}">
+                    <span>⚙️ ${escapeHtml(key)}</span>
+                    <span class="sc-badge">${list.length}</span>
+                    <span class="sc-arrow ${open ? 'open' : ''}">▼</span>
+                </button>
+                <div class="sc-group-body ${open ? 'open' : ''}" id="sc-body-${escapeHtml(key)}">
+                    <div style="color:var(--muted);font-size:12px;margin-bottom:10px">أمر إداري أضافه أمر سلاش — ما له وصف جاهز بالموقع.</div>
+                    <div class="sc-chips" id="sc-list-${escapeHtml(key)}">
+                        ${list.map(s => `
+                            <span class="sc-chip">
+                                ${escapeHtml(s.name)}
+                                <button type="button" class="sc-chip-x" data-action="remove-shortcut" data-command="${escapeHtml(key)}" data-index="${s.i}" title="حذف">✖</button>
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 let openScGroup = 'ban';
@@ -2238,9 +2280,10 @@ function renderShortcuts() {
     panelHTML(`
         <div class="panel-card">
             <h3>⚡ الاختصارات حسب الأمر</h3>
-            <div class="section-note">اضغط على أي أمر إداري تنزل تحت مباشرة قائمته: تشوف اختصاراته وتضيف اختصارك — كلمة واحدة، كلمتين أو ثلاث كلمات. لما يكتب العضو الاختصار في الروم ينفذ البوت الأمر فوراً.</div>
+            <div class="section-note">اضغط على أي أمر إداري تنزل تحت مباشرة قائمته: تشوف اختصاراته وتضيف اختصارك — كلمة واحدة، كلمتين أو ثلاث كلمات. لما يكتب العضو الاختصار في الروم ينفذ البوت الأمر فوراً.<br>كل شي تسويه بأمر سلاش (<code>/shortcut</code> أو الردود التلقائية) يظهر هنا مباشرة.</div>
         </div>
         ${shortcutGroupsHTML()}
+        ${orphanShortcutGroups()}
     `);
 }
 
